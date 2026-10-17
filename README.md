@@ -80,11 +80,69 @@ docker compose run --build --rm api python -m pytest -q
 
 La configuración de PostgreSQL se carga desde `.env` mediante Docker Compose. Ni la URL ni la clave JWT se incluyen en la imagen o en las respuestas de la API.
 
+## Endpoints Transaccionales (Dev 5: Core - Transaccional)
+
+### 1. Adjudicación y Bloqueo Concurrente
+- **Endpoint:** `POST /api/v1/ofertas/adjudicar`
+- **Headers:** `Authorization: Bearer <TOKEN>`
+- **Payload:**
+```json
+{
+  "id_emergencia": 101,
+  "ofertas_adjudicadas": [
+    {
+      "id_oferta": 15,
+      "id_ong": 3,
+      "recursos": [
+        { "id_recurso": 10, "cantidad_adjudicada": 50 }
+      ]
+    }
+  ]
+}
+```
+- **Respuesta (200 OK):**
+```json
+{
+  "id_emergencia": 101,
+  "estado": "bloqueo_exitoso",
+  "mensaje": "Los recursos han sido comprometidos transaccionalmente a nivel nacional.",
+  "timestamp_bloqueo": "2026-10-17T15:30:00Z",
+  "ofertas_adjudicadas": [{"id_oferta": 15, "id_ong": 3, "estado": "adjudicada"}],
+  "ofertas_rechazadas": []
+}
+```
+Si ninguna oferta cuenta con stock disponible suficiente, devuelve **HTTP 409 Conflict**.
+
+### 2. Liberación de Recursos y Cierre
+- **Endpoint:** `POST /api/v1/proyectos/liberar-recursos`
+- **Headers:** `Authorization: Bearer <TOKEN>`
+- **Payload:**
+```json
+{
+  "id_emergencia": 101,
+  "id_ong": 3,
+  "motivo_cierre": "finalizacion_tareas",
+  "recursos_a_liberar": [
+    { "id_recurso": 10, "cantidad_liberada": 50 }
+  ]
+}
+```
+- **Respuesta (200 OK):**
+```json
+{
+  "estado": "liberacion_exitosa",
+  "id_ong": 3,
+  "mensaje": "Recursos liberados. Disponibilidad global actualizada.",
+  "total_recursos_liberados": 50
+}
+```
+
 ## Detener
 
 ```sh
 docker compose down
 ```
+
 
 ## Estructura
 
