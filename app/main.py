@@ -4,13 +4,14 @@ from fastapi import FastAPI, Request
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse
 
-from app.api.routes import auth_router, health_router
+from app.api.routes import auth_router, health_router, ongs_router
 from app.core.config import DatabaseConfigurationError, JWTConfigurationError
 
 app = FastAPI(title="DSSD Servicio Externo API")
 
 app.include_router(health_router)
 app.include_router(auth_router)
+app.include_router(ongs_router)
 
 
 def custom_openapi() -> dict:
