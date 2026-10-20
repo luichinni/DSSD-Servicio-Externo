@@ -1,0 +1,16 @@
+{
+  "id_emergencia": 101,
+  "tipo_desastre": "hidrologico",
+  "gravedad": "alto",
+  "ofertas": [
+    {
+      "id_oferta": 15,
+      "id_ong": 3,
+      "es_conjunta": false,
+      "recursos": [
+        { "id_recurso": 10, "cantidad_ofrecida": 50 },
+        { "id_recurso": 12, "cantidad_ofrecida": 5 }
+      ]
+    }
+  ]
+}

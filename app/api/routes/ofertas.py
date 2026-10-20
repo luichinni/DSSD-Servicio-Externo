@@ -1,6 +1,14 @@
-from fastapi import APIRouter, HTTPException, status
+from datetime import datetime, timezone
+from typing import Annotated
 
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
+
+from app.core.config import DatabaseConfigurationError
 from app.core.openapi import TAG_OFERTAS
+from app.core.security import get_current_user
+from app.db.session import get_db
 from app.schemas import (
     AdjudicarOfertasRequest,
     AdjudicarOfertasResponse,
@@ -8,26 +16,42 @@ from app.schemas import (
     ValidarOfertasResponse,
     errores,
 )
+from app.services.validacion import (
+    CertificacionNoEncontrada,
+    ReferenciaNoDisponible,
+    consultar_certificaciones,
+    evaluar_ofertas,
+)
 
-"""Endpoints de ofertas. ESQUELETO de Dev 2: Dev 4 implementa /validar y Dev 5 /adjudicar.
-La firma (ruta, body, response_model, errores) es el contrato; no cambiarla sin avisar. Se registra en main.py con prefix="/api/v1".
-"""
-
-# Seguridad: agregar dependencies=[Depends(get_current_user)] en la integración final.
-router = APIRouter(tags=[TAG_OFERTAS])
+router = APIRouter(tags=[TAG_OFERTAS], dependencies=[Depends(get_current_user)])
 
 
 @router.post(
     "/ofertas/validar",
     response_model=ValidarOfertasResponse,
-    responses=errores(401, 404),
+    responses={**errores(401, 404), 503: {"description": "Registro nacional no disponible."}},
     summary="Validar ofertas por competencias",
-    description="Cruza cada recurso ofrecido con las certificaciones de la ONG y asigna perfil "
-    "de competencia, nivel de riesgo y clasificación por recurso. No hay rechazo binario. "
-    "Requiere JWT.",
+    description=(
+        "Evalúa cada recurso con certificaciones vigentes y devuelve principal o apoyo. "
+        "El apoyo se limita al nivel de riesgo informado y requiere supervisión. "
+        "Para ofertas conjuntas se puede enviar un participante por solicitud. "
+        "No verifica stock ni reserva recursos. Requiere JWT."
+    ),
 )
-def validar_ofertas(payload: ValidarOfertasRequest):
-    raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED, "Pendiente de implementación (Dev 4)")
+def validar_ofertas(
+    payload: ValidarOfertasRequest,
+    db: Annotated[Session, Depends(get_db)],
+) -> ValidarOfertasResponse:
+    try:
+        certificaciones = consultar_certificaciones(db, payload)
+    except ReferenciaNoDisponible as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except SQLAlchemyError as exc:
+        raise DatabaseConfigurationError("No se pudo consultar el registro de certificaciones.") from exc
+    try:
+        return evaluar_ofertas(payload, certificaciones, datetime.now(timezone.utc).date())
+    except CertificacionNoEncontrada as exc:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
 
 
 @router.post(
@@ -35,9 +59,7 @@ def validar_ofertas(payload: ValidarOfertasRequest):
     response_model=AdjudicarOfertasResponse,
     responses=errores(401, 404, 409),
     summary="Adjudicar ofertas y bloquear recursos",
-    description="Bloquea transaccionalmente (with_for_update) los recursos de las ofertas elegidas "
-    "y los asocia a la emergencia. Si el inventario no alcanza, responde 409 y hace rollback "
-    "de toda la adjudicación. Requiere JWT.",
+    description="Esqueleto de Dev 2; implementación transaccional pendiente de Dev 5.",
 )
 def adjudicar_ofertas(payload: AdjudicarOfertasRequest):
     raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED, "Pendiente de implementación (Dev 5)")

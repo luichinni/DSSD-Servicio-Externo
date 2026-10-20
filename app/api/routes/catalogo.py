@@ -1,38 +1,45 @@
-from fastapi import APIRouter, HTTPException, Query, status
+from datetime import datetime, timezone
+from typing import Annotated
 
+from fastapi import APIRouter, Depends, Query
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
+
+from app.core.config import DatabaseConfigurationError
 from app.core.openapi import TAG_CATALOGO
+from app.core.security import get_current_user
+from app.db.session import get_db
 from app.schemas import DisponibilidadResponse, OngsHabilitadasResponse, errores
+from app.services.catalogo import consultar_disponibilidad, consultar_ongs_habilitadas
 
-"""Endpoints del catálogo. ESQUELETO de Dev 2: Dev 3 reemplaza el cuerpo de cada función.
-La firma (ruta, parámetros, response_model, errores) es el contrato; no cambiarla sin avisar. Se registra en main.py con prefix="/api/v1".
-"""
-
-# Seguridad: agregar dependencies=[Depends(get_current_user)] en la integración final.
-router = APIRouter(tags=[TAG_CATALOGO])
+router = APIRouter(tags=[TAG_CATALOGO], dependencies=[Depends(get_current_user)])
+DatabaseSession = Annotated[Session, Depends(get_db)]
+respuestas = {**errores(401), 503: {"description": "Catálogo nacional no disponible."}}
 
 
 @router.get(
-    "/ongs/habilitadas",
-    response_model=OngsHabilitadasResponse,
-    responses=errores(401),
-    summary="Listar ONGs y su estado de habilitación",
-    description="Devuelve las ONGs registradas en el Sistema Nacional con su estado de "
-    "habilitación y sus certificaciones. Requiere JWT.",
+    "/ongs/habilitadas", response_model=OngsHabilitadasResponse,
+    responses=respuestas, summary="Consultar ONGs habilitadas y sus certificaciones vigentes",
 )
-def listar_ongs_habilitadas():
-    raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED, "Pendiente de implementación (Dev 3)")
+def obtener_ongs_habilitadas(db: DatabaseSession):
+    try:
+        ongs = consultar_ongs_habilitadas(db, datetime.now(timezone.utc).date())
+    except SQLAlchemyError as exc:
+        raise DatabaseConfigurationError("No se pudo consultar el catálogo de ONGs.") from exc
+    return OngsHabilitadasResponse(total=len(ongs), ongs=ongs)
 
 
 @router.get(
-    "/recursos/disponibilidad",
-    response_model=DisponibilidadResponse,
-    responses=errores(401),
-    summary="Consultar disponibilidad global de recursos",
-    description="Devuelve el inventario disponible y la cantidad comprometida por ONG y recurso. "
-    "Permite filtrar por recurso y/o ONG. Requiere JWT.",
+    "/recursos/disponibilidad", response_model=DisponibilidadResponse,
+    responses=respuestas, summary="Consultar disponibilidad por ONG y recurso",
 )
-def consultar_disponibilidad(
-    recurso_id: int | None = Query(default=None, gt=0, description="Filtrar por recurso.", examples=[10]),
-    id_ong: int | None = Query(default=None, gt=0, description="Filtrar por ONG.", examples=[3]),
+def obtener_disponibilidad(
+    db: DatabaseSession,
+    recurso_id: int | None = Query(default=None, gt=0),
+    id_ong: int | None = Query(default=None, gt=0),
 ):
-    raise HTTPException(status.HTTP_501_NOT_IMPLEMENTED, "Pendiente de implementación (Dev 3)")
+    try:
+        recursos = consultar_disponibilidad(db, recurso_id=recurso_id, id_ong=id_ong)
+    except SQLAlchemyError as exc:
+        raise DatabaseConfigurationError("No se pudo consultar el inventario nacional.") from exc
+    return DisponibilidadResponse(total=len(recursos), recursos=recursos)

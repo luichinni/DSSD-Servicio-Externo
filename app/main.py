@@ -4,9 +4,8 @@ from fastapi import FastAPI, Request
 from fastapi.openapi.utils import get_openapi
 from fastapi.responses import JSONResponse
 
-from app.api.routes import auth_router, health_router
+from app.api.routes import auth_router, health_router, ofertas_router, ongs_router
 from app.api.routes.catalogo import router as catalogo_router
-from app.api.routes.ofertas import router as ofertas_router
 from app.api.routes.proyectos import router as proyectos_router
 from app.core.config import DatabaseConfigurationError, JWTConfigurationError
 from app.core.openapi import (
@@ -28,6 +27,7 @@ app = FastAPI(
 app.include_router(health_router)
 app.include_router(auth_router)
 app.include_router(catalogo_router, prefix="/api/v1")
+app.include_router(ongs_router, prefix="/api/v1")
 app.include_router(ofertas_router, prefix="/api/v1")
 app.include_router(proyectos_router, prefix="/api/v1")
 
@@ -36,7 +36,6 @@ def custom_openapi() -> dict:
     if app.openapi_schema is not None:
         return app.openapi_schema
 
-    # get_openapi no lee los metadatos de FastAPI(...) por su cuenta; hay que pasarle summary, description y tags explícitamente.
     schema = get_openapi(
         title=app.title,
         version=app.version,
