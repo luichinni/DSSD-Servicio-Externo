@@ -1,3 +1,4 @@
+import uuid
 from pydantic import BaseModel, ConfigDict, Field
 
 class ONGCreate(BaseModel):
@@ -6,7 +7,7 @@ class ONGCreate(BaseModel):
 
 class ONGResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
-    id: int
+    id: uuid.UUID
     nombre: str
-    descripcion: str
+    descripcion: str | None
     habilitada: bool

@@ -21,4 +21,4 @@ def registrar_ong(datos: ONGCreate, db: Session) -> ONG:
 def listar_ongs(db: Session) -> list[ONG]:
     consulta = (select(ONG).order_by(ONG.nombre.asc()).where(ONG.habilitada == True))
 
-    return db.list(db.scalars(consulta).all())
+    return list(db.scalars(consulta).all())

@@ -11,7 +11,7 @@ DatabaseSession = Annotated[Session, Depends(get_db)]
 @router.post("/", response_model=ONGResponse, status_code=status.HTTP_201_CREATED)
 def crear_ong(datos: ONGCreate, db: DatabaseSession):
     try:
-        registrar_ong(datos, db)
+        return registrar_ong(datos, db)
     except Exception:
         db.rollback()
         raise
