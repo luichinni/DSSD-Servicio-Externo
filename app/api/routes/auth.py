@@ -3,7 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-
+from app.core.openapi import TAG_AUTH
 from app.core.security import (
     create_access_token,
     get_current_user,
@@ -11,9 +11,10 @@ from app.core.security import (
 )
 from app.db.session import get_db
 from app.models.user import User
-from app.schemas.auth import ErrorResponse, LoginRequest, TokenResponse, UserResponse
+from app.schemas.auth import LoginRequest, TokenResponse, UserResponse
+from app.schemas.errors import ErrorResponse
 
-router = APIRouter(prefix="/auth", tags=["authentication"])
+router = APIRouter(prefix="/auth", tags=[TAG_AUTH])
 unauthorized_response = {
     401: {
         "model": ErrorResponse,

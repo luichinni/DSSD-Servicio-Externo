@@ -5,11 +5,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
-
+from app.core.openapi import TAG_HEALTH
 from app.db.session import get_db
 from app.schemas.health import HealthResponse
 
-router = APIRouter()
+router = APIRouter(tags=[TAG_HEALTH])
 logger = logging.getLogger(__name__)
 
 
