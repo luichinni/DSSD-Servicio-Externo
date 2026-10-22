@@ -14,7 +14,7 @@ from app.db.session import get_db
 from app.models.user import User
 
 password_hash = PasswordHash.recommended()
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
 
 def hash_password(password: str) -> str:
