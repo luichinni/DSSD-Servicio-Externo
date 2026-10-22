@@ -24,6 +24,10 @@ def get_database_url() -> str:
             "DATABASE_URL no está configurada. Configurá la URL de PostgreSQL "
             "en el archivo .env."
         )
+    # SQLAlchemy usa psycopg2 por defecto para estas URLs; el proyecto instala psycopg 3.
+    for prefix in ("postgresql://", "postgres://"):
+        if database_url.startswith(prefix):
+            return "postgresql+psycopg://" + database_url[len(prefix):]
     return database_url
 
 

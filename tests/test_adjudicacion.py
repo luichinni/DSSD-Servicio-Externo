@@ -13,7 +13,7 @@ from app.db.base import Base
 from app.db.session import get_db
 from app.main import app
 from app.models.compromiso_recurso import CompromisoRecurso, EstadoCompromiso
-from app.models.inventario_nacional import InventarioNacional
+from app.models.inventario import Inventario
 from app.models.user import User
 
 
@@ -64,8 +64,8 @@ def test_adjudicar_requiere_autenticacion(test_env):
 def test_adjudicar_exitoso_todo(test_env):
     client, session_factory, token = test_env
     with session_factory() as db:
-        db.add(InventarioNacional(id_ong=3, id_recurso=10, cantidad_total=100, cantidad_disponible=100))
-        db.add(InventarioNacional(id_ong=3, id_recurso=12, cantidad_total=20, cantidad_disponible=20))
+        db.add(Inventario(ong_id=3, recurso_id=10, cantidad_total=100, cantidad_disponible=100))
+        db.add(Inventario(ong_id=3, recurso_id=12, cantidad_total=20, cantidad_disponible=20))
         db.commit()
 
     payload = {
@@ -96,8 +96,8 @@ def test_adjudicar_exitoso_todo(test_env):
 
     # Verificar BD
     with session_factory() as db:
-        inv10 = db.query(InventarioNacional).filter_by(id_ong=3, id_recurso=10).first()
-        inv12 = db.query(InventarioNacional).filter_by(id_ong=3, id_recurso=12).first()
+        inv10 = db.query(Inventario).filter_by(ong_id=3, recurso_id=10).first()
+        inv12 = db.query(Inventario).filter_by(ong_id=3, recurso_id=12).first()
         assert inv10.cantidad_disponible == 50
         assert inv12.cantidad_disponible == 15
 
@@ -110,7 +110,7 @@ def test_adjudicar_exitoso_todo(test_env):
 def test_adjudicar_idempotente(test_env):
     client, session_factory, token = test_env
     with session_factory() as db:
-        db.add(InventarioNacional(id_ong=3, id_recurso=10, cantidad_total=100, cantidad_disponible=100))
+        db.add(Inventario(ong_id=3, recurso_id=10, cantidad_total=100, cantidad_disponible=100))
         db.commit()
 
     payload = {
@@ -128,12 +128,12 @@ def test_adjudicar_idempotente(test_env):
     res1 = client.post("/api/v1/ofertas/adjudicar", json=payload, headers={"Authorization": f"Bearer {token}"})
     assert res1.status_code == 200
 
-    # Segunda llamada idéntica
+    # Segunda llamada idÃ©ntica
     res2 = client.post("/api/v1/ofertas/adjudicar", json=payload, headers={"Authorization": f"Bearer {token}"})
     assert res2.status_code == 200
 
     with session_factory() as db:
-        inv = db.query(InventarioNacional).filter_by(id_ong=3, id_recurso=10).first()
+        inv = db.query(Inventario).filter_by(ong_id=3, recurso_id=10).first()
         # No debe descontar dos veces (100 - 40 = 60)
         assert inv.cantidad_disponible == 60
 
@@ -141,8 +141,8 @@ def test_adjudicar_idempotente(test_env):
 def test_adjudicar_parcial_ofertas(test_env):
     client, session_factory, token = test_env
     with session_factory() as db:
-        db.add(InventarioNacional(id_ong=3, id_recurso=10, cantidad_total=30, cantidad_disponible=30))
-        db.add(InventarioNacional(id_ong=5, id_recurso=20, cantidad_total=5, cantidad_disponible=2))
+        db.add(Inventario(ong_id=3, recurso_id=10, cantidad_total=30, cantidad_disponible=30))
+        db.add(Inventario(ong_id=5, recurso_id=20, cantidad_total=5, cantidad_disponible=2))
         db.commit()
 
     payload = {
@@ -171,8 +171,8 @@ def test_adjudicar_parcial_ofertas(test_env):
     assert data["ofertas_rechazadas"][0]["id_oferta"] == 2
 
     with session_factory() as db:
-        inv3 = db.query(InventarioNacional).filter_by(id_ong=3, id_recurso=10).first()
-        inv5 = db.query(InventarioNacional).filter_by(id_ong=5, id_recurso=20).first()
+        inv3 = db.query(Inventario).filter_by(ong_id=3, recurso_id=10).first()
+        inv5 = db.query(Inventario).filter_by(ong_id=5, recurso_id=20).first()
         assert inv3.cantidad_disponible == 15
         assert inv5.cantidad_disponible == 2  # Intacto
 
@@ -180,7 +180,7 @@ def test_adjudicar_parcial_ofertas(test_env):
 def test_adjudicar_falla_todas_409(test_env):
     client, session_factory, token = test_env
     with session_factory() as db:
-        db.add(InventarioNacional(id_ong=3, id_recurso=10, cantidad_total=10, cantidad_disponible=5))
+        db.add(Inventario(ong_id=3, recurso_id=10, cantidad_total=10, cantidad_disponible=5))
         db.commit()
 
     payload = {
@@ -205,10 +205,10 @@ def test_adjudicar_recibe_string_largo_bonita(test_env):
     import json
     client, session_factory, token = test_env
     with session_factory() as db:
-        db.add(InventarioNacional(id_ong=8, id_recurso=50, cantidad_total=100, cantidad_disponible=100))
+        db.add(Inventario(ong_id=8, recurso_id=50, cantidad_total=100, cantidad_disponible=100))
         db.commit()
 
-    # Payload enviado como string largo (tal como lo envía Bonita desde una variable String)
+    # Payload enviado como string largo (tal como lo envÃ­a Bonita desde una variable String)
     payload_dict = {
         "id_emergencia": 500,
         "ofertas_adjudicadas": [

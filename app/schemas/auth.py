@@ -13,10 +13,10 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type: Literal["bearer"] = "bearer"
 
-
+""" Se agregó a errors.py
 class ErrorResponse(BaseModel):
     detail: str
-
+"""
 
 class UserResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)

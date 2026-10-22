@@ -5,14 +5,14 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.compromiso_recurso import CompromisoRecurso, EstadoCompromiso
-from app.models.inventario_nacional import InventarioNacional
-from app.schemas.liberacion import LiberarRequest, LiberarResponse
+from app.models.inventario import Inventario
+from app.schemas.liberacion import LiberarRecursosRequest, LiberarRecursosResponse
 
 
 def procesar_liberacion(
     db: Session,
-    request: LiberarRequest,
-) -> LiberarResponse:
+    request: LiberarRecursosRequest,
+) -> LiberarRecursosResponse:
     ahora = datetime.now(timezone.utc)
 
     # 1. Buscar todos los compromisos activos para la ONG y emergencia dada
@@ -37,14 +37,14 @@ def procesar_liberacion(
 
     # 2. Pre-bloquear las filas de inventario involucradas en orden determinista
     recursos_unicos = sorted({comp.id_recurso for comp in compromisos_activos})
-    inventarios_por_recurso: dict[int, InventarioNacional] = {}
+    inventarios_por_recurso: dict[int, Inventario] = {}
 
     for rec_id in recursos_unicos:
         inv = db.scalar(
-            select(InventarioNacional)
+            select(Inventario)
             .where(
-                InventarioNacional.id_ong == request.id_ong,
-                InventarioNacional.id_recurso == rec_id,
+                Inventario.ong_id == request.id_ong,
+                Inventario.recurso_id == rec_id,
             )
             .with_for_update()
         )
@@ -66,7 +66,7 @@ def procesar_liberacion(
 
     db.commit()
 
-    return LiberarResponse(
+    return LiberarRecursosResponse(
         estado="liberacion_exitosa",
         id_ong=request.id_ong,
         mensaje="Recursos liberados. Disponibilidad global actualizada.",

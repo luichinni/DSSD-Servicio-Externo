@@ -5,8 +5,10 @@ from sqlalchemy import create_engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.models.compromiso_recurso import CompromisoRecurso, EstadoCompromiso
-from app.models.inventario_nacional import InventarioNacional
-from app.schemas.adjudicacion import AdjudicarRequest, OfertaAdjudicadaItem, RecursoAdjudicado
+from app.models.inventario import Inventario
+from app.models.ong import ONG
+from app.models.recurso import Recurso
+from app.schemas.adjudicacion import AdjudicarOfertasRequest, OfertaAdjudicada, RecursoAdjudicado
 from app.services.adjudicacion import procesar_adjudicacion
 
 
@@ -23,16 +25,19 @@ def test_concurrencia_locking_with_for_update_postgres():
     with SessionLocal() as db:
         # Limpiar compromisos previos de prueba
         db.query(CompromisoRecurso).filter_by(id_emergencia=9999).delete()
+        db.merge(ONG(id=99, nombre="ONG concurrencia test", habilitada=True))
+        db.merge(Recurso(id=50, nombre="Recurso concurrencia test", unidad_medida="unidad"))
+        db.flush()
         inv = db.scalar(
-            select(InventarioNacional).where(
-                InventarioNacional.id_ong == 99,
-                InventarioNacional.id_recurso == 50,
+            select(Inventario).where(
+                Inventario.ong_id == 99,
+                Inventario.recurso_id == 50,
             )
         )
         if inv is None:
-            inv = InventarioNacional(
-                id_ong=99,
-                id_recurso=50,
+            inv = Inventario(
+                ong_id=99,
+                recurso_id=50,
                 cantidad_total=100,
                 cantidad_disponible=100,
             )
@@ -43,13 +48,13 @@ def test_concurrencia_locking_with_for_update_postgres():
         db.commit()
 
     # Lanzamos 5 solicitudes concurrentes que intentan adjudicar 30 unidades cada una.
-    # Stock = 100. Solo 3 solicitudes deben tener éxito (3 x 30 = 90). Las otras 2 deben fallar por falta de stock.
+    # Stock = 100. Solo 3 solicitudes deben tener ÃƒÂ©xito (3 x 30 = 90). Las otras 2 deben fallar por falta de stock.
     def intentar_adjudicar(oferta_id: int):
         with SessionLocal() as db:
-            req = AdjudicarRequest(
+            req = AdjudicarOfertasRequest(
                 id_emergencia=9999,
                 ofertas_adjudicadas=[
-                    OfertaAdjudicadaItem(
+                    OfertaAdjudicada(
                         id_oferta=oferta_id,
                         id_ong=99,
                         recursos=[RecursoAdjudicado(id_recurso=50, cantidad_adjudicada=30)],
@@ -75,9 +80,9 @@ def test_concurrencia_locking_with_for_update_postgres():
     # Verificar consistencia en BD
     with SessionLocal() as db:
         inv_final = db.scalar(
-            select(InventarioNacional).where(
-                InventarioNacional.id_ong == 99,
-                InventarioNacional.id_recurso == 50,
+            select(Inventario).where(
+                Inventario.ong_id == 99,
+                Inventario.recurso_id == 50,
             )
         )
         assert inv_final.cantidad_disponible == 10  # 100 - (3 * 30) = 10

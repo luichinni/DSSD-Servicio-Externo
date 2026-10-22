@@ -1,7 +1,7 @@
-"""Create inventario_nacional and compromisos_recursos tables.
+"""Create compromisos_recursos table.
 
-Revision ID: 20261017_0002
-Revises: 20261015_0001
+Revision ID: 20261021_0004
+Revises: 20261020_0003
 """
 
 from typing import Sequence, Union
@@ -10,33 +10,13 @@ from alembic import op
 import sqlalchemy as sa
 
 
-revision: str = "20261017_0002"
-down_revision: Union[str, None] = "20261015_0001"
+revision: str = "20261021_0004"
+down_revision: Union[str, None] = "20261020_0003"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.create_table(
-        "inventario_nacional",
-        sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
-        sa.Column("id_ong", sa.Integer(), nullable=False),
-        sa.Column("id_recurso", sa.Integer(), nullable=False),
-        sa.Column("cantidad_total", sa.Integer(), nullable=False, server_default="0"),
-        sa.Column("cantidad_disponible", sa.Integer(), nullable=False, server_default="0"),
-        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
-        sa.Column("updated_at", sa.DateTime(timezone=True), nullable=False),
-        sa.PrimaryKeyConstraint("id"),
-        sa.UniqueConstraint("id_ong", "id_recurso", name="uq_inventario_ong_recurso"),
-        sa.CheckConstraint("cantidad_disponible >= 0", name="chk_inventario_disponible_no_negativo"),
-        sa.CheckConstraint(
-            "cantidad_disponible <= cantidad_total",
-            name="chk_inventario_disponible_no_mayor_total",
-        ),
-    )
-    op.create_index("ix_inventario_nacional_id_ong", "inventario_nacional", ["id_ong"])
-    op.create_index("ix_inventario_nacional_id_recurso", "inventario_nacional", ["id_recurso"])
-
     op.create_table(
         "compromisos_recursos",
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
@@ -86,7 +66,3 @@ def downgrade() -> None:
     op.drop_index("ix_compromisos_recursos_id_emergencia", table_name="compromisos_recursos")
     op.drop_table("compromisos_recursos")
     sa.Enum(name="estado_compromiso_enum").drop(op.get_bind(), checkfirst=True)
-
-    op.drop_index("ix_inventario_nacional_id_recurso", table_name="inventario_nacional")
-    op.drop_index("ix_inventario_nacional_id_ong", table_name="inventario_nacional")
-    op.drop_table("inventario_nacional")

@@ -12,7 +12,7 @@ from app.db.base import Base
 from app.db.session import get_db
 from app.main import app
 from app.models.compromiso_recurso import CompromisoRecurso, EstadoCompromiso
-from app.models.inventario_nacional import InventarioNacional
+from app.models.inventario import Inventario
 from app.models.user import User
 
 
@@ -54,7 +54,7 @@ def test_liberar_requiere_autenticacion(test_env):
     client, _, _ = test_env
     res = client.post(
         "/api/v1/proyectos/liberar-recursos",
-        json={"id_emergencia": 101, "id_ong": 3, "motivo_cierre": "cierre"},
+        json={"id_emergencia": 101, "id_ong": 3, "motivo_cierre": "cierre", "recursos_a_liberar": [{"id_recurso": 10, "cantidad_liberada": 1}]},
     )
     assert res.status_code == 401
 
@@ -64,8 +64,8 @@ def test_liberar_exitoso_todos_los_recursos_de_la_ong(test_env):
     ahora = datetime.now(timezone.utc)
     with session_factory() as db:
         # Inventario de ONG 3 con stock descontado
-        db.add(InventarioNacional(id_ong=3, id_recurso=10, cantidad_total=100, cantidad_disponible=50))
-        db.add(InventarioNacional(id_ong=3, id_recurso=12, cantidad_total=30, cantidad_disponible=10))
+        db.add(Inventario(ong_id=3, recurso_id=10, cantidad_total=100, cantidad_disponible=50))
+        db.add(Inventario(ong_id=3, recurso_id=12, cantidad_total=30, cantidad_disponible=10))
 
         # Compromisos activos de ONG 3 en emergencia 101
         db.add(
@@ -125,8 +125,8 @@ def test_liberar_exitoso_todos_los_recursos_de_la_ong(test_env):
 
     with session_factory() as db:
         # Stock disponible restaurado para ONG 3
-        inv10 = db.query(InventarioNacional).filter_by(id_ong=3, id_recurso=10).first()
-        inv12 = db.query(InventarioNacional).filter_by(id_ong=3, id_recurso=12).first()
+        inv10 = db.query(Inventario).filter_by(ong_id=3, recurso_id=10).first()
+        inv12 = db.query(Inventario).filter_by(ong_id=3, recurso_id=12).first()
         assert inv10.cantidad_disponible == 100
         assert inv12.cantidad_disponible == 30
 
@@ -147,6 +147,7 @@ def test_liberar_sin_compromisos_retorna_404(test_env):
         "id_emergencia": 999,
         "id_ong": 3,
         "motivo_cierre": "cierre_sin_recursos",
+        "recursos_a_liberar": [{"id_recurso": 10, "cantidad_liberada": 1}],
     }
     res = client.post(
         "/api/v1/proyectos/liberar-recursos",
@@ -161,7 +162,7 @@ def test_liberar_recibe_string_largo_bonita(test_env):
     client, session_factory, token = test_env
     ahora = datetime.now(timezone.utc)
     with session_factory() as db:
-        db.add(InventarioNacional(id_ong=4, id_recurso=30, cantidad_total=50, cantidad_disponible=10))
+        db.add(Inventario(ong_id=4, recurso_id=30, cantidad_total=50, cantidad_disponible=10))
         db.add(
             CompromisoRecurso(
                 id_emergencia=777,
@@ -175,7 +176,7 @@ def test_liberar_recibe_string_largo_bonita(test_env):
         )
         db.commit()
 
-    payload_str = json.dumps({"id_emergencia": 777, "id_ong": 4, "motivo_cierre": "fin_operativo"})
+    payload_str = json.dumps({"id_emergencia": 777, "id_ong": 4, "motivo_cierre": "fin_operativo", "recursos_a_liberar": [{"id_recurso": 30, "cantidad_liberada": 40}]})
 
     res = client.post(
         "/api/v1/proyectos/liberar-recursos",

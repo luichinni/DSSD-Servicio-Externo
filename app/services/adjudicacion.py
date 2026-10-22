@@ -5,10 +5,10 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.compromiso_recurso import CompromisoRecurso, EstadoCompromiso
-from app.models.inventario_nacional import InventarioNacional
+from app.models.inventario import Inventario
 from app.schemas.adjudicacion import (
-    AdjudicarRequest,
-    AdjudicarResponse,
+    AdjudicarOfertasRequest,
+    AdjudicarOfertasResponse,
     OfertaAdjudicadaResultado,
     OfertaRechazadaDetalle,
     RecursoSinStockDetalle,
@@ -17,8 +17,8 @@ from app.schemas.adjudicacion import (
 
 def procesar_adjudicacion(
     db: Session,
-    request: AdjudicarRequest,
-) -> tuple[AdjudicarResponse, int]:
+    request: AdjudicarOfertasRequest,
+) -> tuple[AdjudicarOfertasResponse, int]:
     ahora = datetime.now(timezone.utc)
 
     # Recolectar todas las parejas (id_ong, id_recurso) para pre-bloquear con with_for_update() en orden determinista
@@ -30,13 +30,13 @@ def procesar_adjudicacion(
         }
     )
 
-    inventarios_por_par: dict[tuple[int, int], InventarioNacional] = {}
+    inventarios_por_par: dict[tuple[int, int], Inventario] = {}
     for ong_id, rec_id in pares_a_bloquear:
         query = (
-            select(InventarioNacional)
+            select(Inventario)
             .where(
-                InventarioNacional.id_ong == ong_id,
-                InventarioNacional.id_recurso == rec_id,
+                Inventario.ong_id == ong_id,
+                Inventario.recurso_id == rec_id,
             )
             .with_for_update()
         )
@@ -49,7 +49,7 @@ def procesar_adjudicacion(
 
     for item in request.ofertas_adjudicadas:
         recursos_rechazados: list[RecursoSinStockDetalle] = []
-        recursos_a_descontar: list[tuple[InventarioNacional, int]] = []
+        recursos_a_descontar: list[tuple[Inventario, int]] = []
         nuevos_compromisos: list[CompromisoRecurso] = []
 
         for rec in item.recursos:
@@ -86,7 +86,7 @@ def procesar_adjudicacion(
                         )
                     )
                 else:
-                    # Idempotente: ya está comprometido con la misma cantidad y estado COMPROMETIDO
+                    # Idempotente: ya estÃ¡ comprometido con la misma cantidad y estado COMPROMETIDO
                     continue
             else:
                 if inv is None:
@@ -108,7 +108,7 @@ def procesar_adjudicacion(
                         )
                     )
                 else:
-                    # Stock suficiente y válido
+                    # Stock suficiente y vÃ¡lido
                     recursos_a_descontar.append((inv, rec.cantidad_adjudicada))
                     nuevos_compromisos.append(
                         CompromisoRecurso(
@@ -122,7 +122,7 @@ def procesar_adjudicacion(
                         )
                     )
 
-        # Regla: aceptación a nivel de oferta. Si un recurso de la oferta falla, toda la oferta se rechaza
+        # Regla: aceptaciÃ³n a nivel de oferta. Si un recurso de la oferta falla, toda la oferta se rechaza
         if recursos_rechazados:
             ofertas_rechazadas_resp.append(
                 OfertaRechazadaDetalle(
@@ -170,7 +170,7 @@ def procesar_adjudicacion(
         else "Se adjudicaron parcialmente las ofertas con disponibilidad suficiente."
     )
 
-    respuesta = AdjudicarResponse(
+    respuesta = AdjudicarOfertasResponse(
         id_emergencia=request.id_emergencia,
         estado=estado_global,
         mensaje=mensaje_global,
