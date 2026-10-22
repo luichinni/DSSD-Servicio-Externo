@@ -45,19 +45,23 @@ durante una emergencia. Los datos se persisten en PostgreSQL.
 
 ## Flujo principal
 
-1. `POST /api/v1/ofertas/validar`: evalúa cada oferta según las certificaciones de la ONG
+1. `POST /api/v1/auth/login`: autenticación con credenciales y generación de Bearer JWT.
+2. `POST /api/v1/ofertas/validar`: evalúa cada oferta según las certificaciones de la ONG
    y asigna perfil de competencia, nivel de riesgo y clasificación por recurso
-   (no hay rechazo binario).
-2. `POST /api/v1/ofertas/adjudicar`: bloquea los recursos de las ofertas elegidas con
-   control de concurrencia. Si el inventario no alcanza, responde **409** y hace rollback.
-3. `POST /api/v1/proyectos/liberar-recursos`: al terminar las actividades, devuelve los
-   recursos al inventario disponible.
+   (no hay rechazo binario). Admite payload JSON directo o string serializado desde Bonita.
+3. `POST /api/v1/ofertas/adjudicar`: bloquea los recursos de las ofertas elegidas con
+   control de concurrencia transaccional (`with_for_update`) y control de stock no negativo.
+   Si ninguna oferta puede adjudicarse, responde **409** con rollback; si alcanza parcialmente,
+   responde **200** con detalle de adjudicadas y rechazadas.
+4. `POST /api/v1/proyectos/liberar-recursos`: al terminar las actividades, restaura los recursos
+   comprometidos al inventario disponible para la emergencia y ONG indicadas (el listado
+   `recursos_a_liberar` es opcional).
 
 ## Autenticación
 
 Todos los endpoints de negocio requieren JWT:
 
-1. Ejecutá `POST /auth/login` con tu email y contraseña y copiá el `access_token`.
+1. Ejecutá `POST /api/v1/auth/login` con tu email y contraseña y copiá el `access_token`.
 2. Presioná **Authorize** (arriba a la derecha), pegá el token y confirmá.
 
 ## Convenciones

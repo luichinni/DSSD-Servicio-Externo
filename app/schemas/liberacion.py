@@ -26,7 +26,10 @@ class LiberarRecursosRequest(ApiModel):
     id_emergencia: IdEmergencia
     id_ong: IdOng
     motivo_cierre: str = Field(min_length=1, max_length=50, examples=["finalizacion_tareas"])
-    recursos_a_liberar: list[RecursoALiberar] = Field(min_length=1)
+    recursos_a_liberar: list[RecursoALiberar] = Field(
+        default_factory=list,
+        description="Opcional. Se liberan todos los recursos comprometidos para la emergencia y ONG.",
+    )
 
     @model_validator(mode="before")
     @classmethod
@@ -37,7 +40,8 @@ class LiberarRecursosRequest(ApiModel):
     @field_validator("recursos_a_liberar")
     @classmethod
     def _recursos_sin_duplicados(cls, v: list[RecursoALiberar]) -> list[RecursoALiberar]:
-        validar_sin_duplicados((r.id_recurso for r in v), "id_recurso")
+        if v:
+            validar_sin_duplicados((r.id_recurso for r in v), "id_recurso")
         return v
 
     model_config = ConfigDict(

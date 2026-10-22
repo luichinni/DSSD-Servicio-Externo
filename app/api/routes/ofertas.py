@@ -33,9 +33,9 @@ router = APIRouter(tags=[TAG_OFERTAS], dependencies=[Depends(get_current_user)])
     responses={**errores(401, 404), 503: {"description": "Registro nacional no disponible."}},
     summary="Validar ofertas por competencias",
     description=(
-        "Evalúa cada recurso con certificaciones vigentes y devuelve principal o apoyo. "
-        "El apoyo se limita al nivel de riesgo informado y requiere supervisión. "
-        "Para ofertas conjuntas se puede enviar un participante por solicitud. "
+        "Evalúa cada recurso con certificaciones vigentes y asigna clasificación (lote principal o apoyo secundario), "
+        "perfil de competencia y nivel de riesgo permitido sin rechazo binario. "
+        "Soporta payload JSON directo o string serializado desde Bonita BPM. "
         "No verifica stock ni reserva recursos. Requiere JWT."
     ),
 )
@@ -61,9 +61,10 @@ def validar_ofertas(
     responses=errores(401, 404, 409),
     summary="Adjudicar ofertas y bloquear recursos",
     description=(
-        "Verifica y descuenta el inventario disponible dentro de una transacción con bloqueo de filas. "
-        "Si ninguna oferta puede adjudicarse devuelve 409 con rollback; si alcanza solo para algunas, "
-        "adjudica esas y devuelve el detalle de las rechazadas. Requiere JWT."
+        "Verifica y descuenta el inventario disponible dentro de una transacción con bloqueo de filas (with_for_update). "
+        "Garantiza inventario no negativo ante múltiples ofertas concurrentes o intra-request. "
+        "Si ninguna oferta puede adjudicarse devuelve 409 con rollback; si alcanza parcialmente, "
+        "adjudica las posibles (200 bloqueo_parcial) y detalla las rechazadas por falta de stock. Requiere JWT."
     ),
 )
 def adjudicar_ofertas(

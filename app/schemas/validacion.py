@@ -1,8 +1,9 @@
 from enum import StrEnum
-from typing import Literal
+from typing import Any, Literal
 
-from pydantic import ConfigDict, Field, field_validator
+from pydantic import ConfigDict, Field, field_validator, model_validator
 
+from app.core.deserializer import deserializar_json_string
 from app.schemas.common import (
     ApiModel,
     Cantidad,
@@ -61,6 +62,11 @@ class ValidarOfertasRequest(ApiModel):
     tipo_desastre: TipoDesastreCampo
     gravedad: GravedadCampo
     ofertas: list[OfertaEntrada] = Field(min_length=1, description="Al menos una oferta.")
+
+    @model_validator(mode="before")
+    @classmethod
+    def _deserializar_si_es_string(cls, data: Any) -> Any:
+        return deserializar_json_string(data)
 
     @field_validator("ofertas")
     @classmethod

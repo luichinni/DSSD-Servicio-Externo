@@ -293,3 +293,19 @@ def test_recurso_existente_sin_certificado_no_se_confunde_con_recurso_desconocid
     respuesta = client.post(URL, json=solicitud, headers=headers)
     assert respuesta.status_code == 404
     assert "certificación vigente" in respuesta.json()["detail"]
+
+
+def test_validacion_recibe_string_largo_bonita(entorno):
+    import json
+    client, db, headers = entorno
+    cargar_demo(db, datetime.now(timezone.utc).date())
+    db.commit()
+    payload_str = json.dumps(payload())
+    respuesta = client.post(
+        URL,
+        content=payload_str,
+        headers={**headers, "Content-Type": "text/plain"},
+    )
+    assert respuesta.status_code == 200
+    assert respuesta.json()["estado_general"] == "validado"
+

@@ -60,7 +60,7 @@ def test_login_returns_token_for_valid_credentials(
     saved_user: tuple[UUID, str],
 ) -> None:
     response = client.post(
-        "/auth/login",
+        "/api/v1/auth/login",
         json={"email": "person@example.com", "password": saved_user[1]},
     )
 
@@ -81,14 +81,14 @@ def test_login_rejects_invalid_credentials(
     saved_user: tuple[UUID, str],
     credentials: dict[str, str],
 ) -> None:
-    response = client.post("/auth/login", json=credentials)
+    response = client.post("/api/v1/auth/login", json=credentials)
 
     assert response.status_code == 401
     assert response.json()["detail"] == "Incorrect email or password"
 
 
 def test_current_user_rejects_invalid_token(client: TestClient) -> None:
-    response = client.get("/auth/me", headers={"Authorization": "Bearer invalid.token"})
+    response = client.get("/api/v1/auth/me", headers={"Authorization": "Bearer invalid.token"})
 
     assert response.status_code == 401
 
@@ -99,7 +99,7 @@ def test_current_user_rejects_expired_token(
 ) -> None:
     token = create_access_token(saved_user[0], expires_delta=timedelta(seconds=-1))
 
-    response = client.get("/auth/me", headers={"Authorization": f"Bearer {token}"})
+    response = client.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {token}"})
 
     assert response.status_code == 401
 
@@ -107,13 +107,13 @@ def test_current_user_rejects_expired_token(
 def test_current_user_rejects_token_for_missing_user(client: TestClient) -> None:
     token = create_access_token(UUID("00000000-0000-0000-0000-000000000001"))
 
-    response = client.get("/auth/me", headers={"Authorization": f"Bearer {token}"})
+    response = client.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {token}"})
 
     assert response.status_code == 401
 
 
 def test_current_user_requires_authentication(client: TestClient) -> None:
-    response = client.get("/auth/me")
+    response = client.get("/api/v1/auth/me")
 
     assert response.status_code == 401
 
@@ -124,7 +124,7 @@ def test_current_user_returns_public_user(
 ) -> None:
     token = create_access_token(saved_user[0])
 
-    response = client.get("/auth/me", headers={"Authorization": f"Bearer {token}"})
+    response = client.get("/api/v1/auth/me", headers={"Authorization": f"Bearer {token}"})
 
     assert response.status_code == 200
     assert response.json() == {
@@ -137,12 +137,12 @@ def test_current_user_returns_public_user(
 def test_auth_endpoints_are_documented_in_openapi(client: TestClient) -> None:
     openapi = client.get("/openapi.json").json()
 
-    login = openapi["paths"]["/auth/login"]["post"]
+    login = openapi["paths"]["/api/v1/auth/login"]["post"]
     assert login["requestBody"]["content"]["application/json"]["schema"]["$ref"].endswith(
         "/LoginRequest"
     )
     assert (
-        openapi["paths"]["/auth/me"]["get"]["responses"]["200"]["content"][
+        openapi["paths"]["/api/v1/auth/me"]["get"]["responses"]["200"]["content"][
             "application/json"
         ]["schema"]["$ref"].endswith("/UserResponse")
     )

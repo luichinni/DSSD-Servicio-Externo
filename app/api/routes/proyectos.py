@@ -21,9 +21,9 @@ router = APIRouter(tags=[TAG_PROYECTOS], dependencies=[Depends(get_current_user)
     response_model=LiberarRecursosResponse,
     responses=errores(401, 404),
     summary="Liberar recursos al cerrar un proyecto",
-    description="Marca el fin de actividades: devuelve al inventario disponible los recursos "
+    description="Marca el fin de actividades: devuelve al inventario disponible todos los recursos "
     "comprometidos para la emergencia y la ONG indicadas, dentro de una transacción. "
-    "Requiere JWT.",
+    "La lista de recursos a liberar es opcional. Requiere JWT.",
 )
 def liberar_recursos(
     payload: LiberarRecursosRequest,

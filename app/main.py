@@ -25,7 +25,7 @@ app = FastAPI(
 )
 
 app.include_router(health_router)
-app.include_router(auth_router)
+app.include_router(auth_router, prefix="/api/v1")
 app.include_router(catalogo_router, prefix="/api/v1")
 app.include_router(ongs_router, prefix="/api/v1")
 app.include_router(ofertas_router, prefix="/api/v1")

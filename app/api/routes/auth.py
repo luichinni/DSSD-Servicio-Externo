@@ -28,6 +28,8 @@ unauthorized_response = {
     "/login",
     response_model=TokenResponse,
     responses=unauthorized_response,
+    summary="Iniciar sesión y obtener token JWT",
+    description="Autentica las credenciales (email y contraseña) y emite un token de acceso Bearer JWT válido para los endpoints protegidos.",
 )
 def login(
     credentials: LoginRequest,

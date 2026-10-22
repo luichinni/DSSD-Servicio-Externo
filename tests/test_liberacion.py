@@ -189,3 +189,33 @@ def test_liberar_recibe_string_largo_bonita(test_env):
     assert data["id_ong"] == 4
     assert data["total_recursos_liberados"] == 40
 
+
+def test_liberar_sin_recursos_a_liberar_libera_todos(test_env):
+    client, session_factory, token = test_env
+    ahora = datetime.now(timezone.utc)
+    with session_factory() as db:
+        db.add(Inventario(ong_id=8, recurso_id=50, cantidad_total=100, cantidad_disponible=20))
+        db.add(
+            CompromisoRecurso(
+                id_emergencia=888,
+                id_oferta=9,
+                id_ong=8,
+                id_recurso=50,
+                cantidad_comprometida=80,
+                estado=EstadoCompromiso.COMPROMETIDO,
+                fecha_bloqueo=ahora,
+            )
+        )
+        db.commit()
+
+    # Payload sin recursos_a_liberar
+    res = client.post(
+        "/api/v1/proyectos/liberar-recursos",
+        json={"id_emergencia": 888, "id_ong": 8, "motivo_cierre": "cierre_global"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res.status_code == 200
+    assert res.json()["estado"] == "liberacion_exitosa"
+    assert res.json()["total_recursos_liberados"] == 80
+
+

@@ -44,6 +44,11 @@ def procesar_adjudicacion(
         if inv is not None:
             inventarios_por_par[(ong_id, rec_id)] = inv
 
+    # Seguimiento en memoria del stock disponible para evitar sobregiro entre ofertas concurrentes del mismo lote
+    stock_disponible_tracking: dict[tuple[int, int], int] = {
+        par: inv.cantidad_disponible for par, inv in inventarios_por_par.items()
+    }
+
     ofertas_adjudicadas_resp: list[OfertaAdjudicadaResultado] = []
     ofertas_rechazadas_resp: list[OfertaRechazadaDetalle] = []
 
@@ -55,6 +60,7 @@ def procesar_adjudicacion(
         for rec in item.recursos:
             par = (item.id_ong, rec.id_recurso)
             inv = inventarios_por_par.get(par)
+            disp = stock_disponible_tracking.get(par, 0)
 
             # Verificar si ya existe un compromiso registrado previamente
             compromiso_existente = db.scalar(
@@ -72,7 +78,7 @@ def procesar_adjudicacion(
                         RecursoSinStockDetalle(
                             id_recurso=rec.id_recurso,
                             cantidad_solicitada=rec.cantidad_adjudicada,
-                            cantidad_disponible=inv.cantidad_disponible if inv else 0,
+                            cantidad_disponible=max(0, disp),
                             motivo="ya_liberado",
                         )
                     )
@@ -81,12 +87,12 @@ def procesar_adjudicacion(
                         RecursoSinStockDetalle(
                             id_recurso=rec.id_recurso,
                             cantidad_solicitada=rec.cantidad_adjudicada,
-                            cantidad_disponible=inv.cantidad_disponible if inv else 0,
+                            cantidad_disponible=max(0, disp),
                             motivo="conflicto_cantidad",
                         )
                     )
                 else:
-                    # Idempotente: ya estÃ¡ comprometido con la misma cantidad y estado COMPROMETIDO
+                    # Idempotente: ya está comprometido con la misma cantidad y estado COMPROMETIDO
                     continue
             else:
                 if inv is None:
@@ -98,17 +104,17 @@ def procesar_adjudicacion(
                             motivo="inventario_inexistente",
                         )
                     )
-                elif inv.cantidad_disponible < rec.cantidad_adjudicada:
+                elif disp < rec.cantidad_adjudicada:
                     recursos_rechazados.append(
                         RecursoSinStockDetalle(
                             id_recurso=rec.id_recurso,
                             cantidad_solicitada=rec.cantidad_adjudicada,
-                            cantidad_disponible=inv.cantidad_disponible,
+                            cantidad_disponible=max(0, disp),
                             motivo="stock_insuficiente",
                         )
                     )
                 else:
-                    # Stock suficiente y vÃ¡lido
+                    # Stock suficiente y válido
                     recursos_a_descontar.append((inv, rec.cantidad_adjudicada))
                     nuevos_compromisos.append(
                         CompromisoRecurso(
@@ -122,7 +128,7 @@ def procesar_adjudicacion(
                         )
                     )
 
-        # Regla: aceptaciÃ³n a nivel de oferta. Si un recurso de la oferta falla, toda la oferta se rechaza
+        # Regla: aceptación a nivel de oferta. Si un recurso de la oferta falla, toda la oferta se rechaza
         if recursos_rechazados:
             ofertas_rechazadas_resp.append(
                 OfertaRechazadaDetalle(
@@ -133,9 +139,12 @@ def procesar_adjudicacion(
                 )
             )
         else:
-            # Aplicar descuentos e insertar compromisos
+            # Aplicar descuentos e insertar compromisos, acotando a cero sin negativos
             for inv_item, cant in recursos_a_descontar:
-                inv_item.cantidad_disponible -= cant
+                descuento = min(inv_item.cantidad_disponible, cant)
+                inv_item.cantidad_disponible = max(0, inv_item.cantidad_disponible - descuento)
+                par_desc = (inv_item.ong_id, inv_item.recurso_id)
+                stock_disponible_tracking[par_desc] = max(0, stock_disponible_tracking.get(par_desc, 0) - cant)
             for comp in nuevos_compromisos:
                 db.add(comp)
             ofertas_adjudicadas_resp.append(
