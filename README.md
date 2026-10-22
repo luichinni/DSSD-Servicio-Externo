@@ -163,9 +163,9 @@ docker compose down
 
 ## Validación por competencias
 
-`POST /api/v1/ofertas/validar` recibe la emergencia, las ofertas y los recursos de cada ONG. Comprueba que las ONGs estén habilitadas, que los recursos existan y que cuenten con certificaciones vigentes aplicables al tipo de desastre. Devuelve `lote_principal` o `apoyo_secundario`, con `estado_general: "validado"`. Requiere JWT y no reserva recursos. El contrato de solicitud y respuesta está disponible en Swagger.
+`POST /api/v1/ofertas/validar` recibe la emergencia, las ofertas y los recursos de cada ONG. Comprueba que las ONGs estén habilitadas y que los recursos existan. Los recursos sin certificaciones vigentes aplicables al tipo de desastre se omiten; los recursos restantes se clasifican como `lote_principal` o `apoyo_secundario`. Si una oferta queda sin recursos certificados, no se incluye en `ofertas_validadas`. Requiere JWT y no reserva recursos. El contrato de solicitud y respuesta está disponible en Swagger.
 
-Si una ONG no existe o está inhabilitada, un recurso no existe o falta una certificación vigente aplicable, devuelve HTTP 404. Los datos de entrada inválidos devuelven 422 y los errores de acceso a la base, 503.
+Si una ONG no existe o está inhabilitada, o un recurso no existe en el catálogo, devuelve HTTP 404. Los datos de entrada inválidos devuelven 422 y los errores de acceso a la base, 503.
 
 Para cargar certificaciones ficticias en una base de desarrollo, después de aplicar las migraciones:
 

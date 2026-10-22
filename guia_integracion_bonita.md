@@ -280,6 +280,6 @@ def obtener_contexto_tarea(task_id: int) -> dict:
    * `gravedad`: `"bajo"`, `"medio"`, `"alto"`, `"critico"`.
 2. **IDs Numéricos:** `id_emergencia`, `id_ong`, `id_oferta`, `id_recurso` deben ser enteros positivos estrictos.
 3. **Manejo de Errores HTTP en Conectores Bonita:**
-   * **404:** Certificación vencida o no encontrada.
+   * **404:** ONG inexistente o inhabilitada, recurso inexistente o compromiso de liberación no encontrado. Los recursos sin certificación vigente se omiten de la respuesta de validación.
    * **409:** Stock insuficiente (`bloqueo_fallido`). Debe capturarse la variable de status para evitar que el conector falle como excepción no controlada.
    * **422:** Error de payload (revisar nombres de campos y enums).

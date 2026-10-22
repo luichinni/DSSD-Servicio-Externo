@@ -8,7 +8,7 @@ from app.cli.seed_certificaciones_demo import cargar_catalogo_demo, cargar_demo
 from app.core.security import create_access_token
 from app.models import Certificacion, User, ONG, Recurso
 from app.schemas import ValidarOfertasRequest, ValidarOfertasResponse
-from app.services.validacion import CertificacionNoEncontrada, evaluar_ofertas
+from app.services.validacion import evaluar_ofertas
 
 URL = "/api/v1/ofertas/validar"
 HOY = date(2026, 10, 17)
@@ -55,11 +55,12 @@ def test_certificado_vigente_incluye_el_dia_de_vencimiento(rol):
     {"id_ong": 4},
     {"id_recurso": 12},
 ])
-def test_sin_certificacion_vigente_no_inventa_una_habilitacion(cambios):
-    with pytest.raises(CertificacionNoEncontrada, match="ONG 3, recurso 10"):
-        evaluar_ofertas(
-            ValidarOfertasRequest.model_validate(payload()), [certificado(**cambios)], HOY
-        )
+def test_sin_certificacion_vigente_omite_la_oferta_si_no_quedan_recursos(cambios):
+    resultado = evaluar_ofertas(
+        ValidarOfertasRequest.model_validate(payload()), [certificado(**cambios)], HOY
+    )
+    assert resultado.estado_general == "validado"
+    assert resultado.ofertas_validadas == []
 
 
 def test_riesgo_inferior_se_adapta_a_apoyo_con_su_limite():
@@ -150,8 +151,8 @@ def test_oferta_conjunta_se_evalua_por_participante_sin_compartir_certificados(e
     assert primera.json()["ofertas_validadas"][0]["recursos_evaluados"][0]["clasificacion"] == "lote_principal"
     solicitud["ofertas"][0]["id_ong"] = 4
     segunda = client.post(URL, json=solicitud, headers=headers)
-    assert segunda.status_code == 404
-    assert "ONG 4, recurso 10" in segunda.json()["detail"]
+    assert segunda.status_code == 200
+    assert segunda.json()["ofertas_validadas"] == []
     solicitud["ofertas"][0]["recursos"][0]["id_recurso"] = 12
     tercera = client.post(URL, json=solicitud, headers=headers)
     assert tercera.status_code == 200
@@ -289,10 +290,15 @@ def test_recurso_existente_sin_certificado_no_se_confunde_con_recurso_desconocid
     db.add(Recurso(id=99, nombre="Otro recurso", unidad_medida="unidad"))
     db.commit()
     solicitud = payload()
-    solicitud["ofertas"][0]["recursos"][0]["id_recurso"] = 99
+    solicitud["ofertas"][0]["recursos"].append(
+        {"id_recurso": 99, "cantidad_ofrecida": 2}
+    )
     respuesta = client.post(URL, json=solicitud, headers=headers)
-    assert respuesta.status_code == 404
-    assert "certificación vigente" in respuesta.json()["detail"]
+    assert respuesta.status_code == 200
+    assert [
+        recurso["id_recurso"]
+        for recurso in respuesta.json()["ofertas_validadas"][0]["recursos_evaluados"]
+    ] == [10]
 
 
 def test_validacion_recibe_string_largo_bonita(entorno):
