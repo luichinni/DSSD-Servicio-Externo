@@ -18,7 +18,6 @@ from app.schemas import (
 )
 from app.services.adjudicacion import procesar_adjudicacion
 from app.services.validacion import (
-    CertificacionNoEncontrada,
     ReferenciaNoDisponible,
     consultar_certificaciones,
     evaluar_ofertas,
@@ -35,6 +34,7 @@ router = APIRouter(tags=[TAG_OFERTAS], dependencies=[Depends(get_current_user)])
     description=(
         "Evalúa cada recurso con certificaciones vigentes y asigna clasificación (lote principal o apoyo secundario), "
         "perfil de competencia y nivel de riesgo permitido sin rechazo binario. "
+        "Los recursos sin certificación vigente se omiten; si una oferta queda sin recursos válidos, no se incluye en la respuesta. "
         "Soporta payload JSON directo o string serializado desde Bonita BPM. "
         "No verifica stock ni reserva recursos. Requiere JWT."
     ),
@@ -49,10 +49,7 @@ def validar_ofertas(
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except SQLAlchemyError as exc:
         raise DatabaseConfigurationError("No se pudo consultar el registro de certificaciones.") from exc
-    try:
-        return evaluar_ofertas(payload, certificaciones, datetime.now(timezone.utc).date())
-    except CertificacionNoEncontrada as exc:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    return evaluar_ofertas(payload, certificaciones, datetime.now(timezone.utc).date())
 
 
 @router.post(

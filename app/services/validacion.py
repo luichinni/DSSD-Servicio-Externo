@@ -18,10 +18,6 @@ from app.schemas.validacion import (
 )
 
 
-class CertificacionNoEncontrada(ValueError):
-    """Falta evidencia nacional vigente para evaluar un aporte."""
-
-
 class ReferenciaNoDisponible(ValueError):
     """El aporte referencia una entidad inexistente o una ONG no habilitada."""
 
@@ -73,11 +69,9 @@ def evaluar_ofertas(
                 and certificado.fecha_vencimiento >= fecha_evaluacion
             ]
             if not vigentes:
-                raise CertificacionNoEncontrada(
-                    "No se encontró certificación vigente aplicable para "
-                    f"la ONG {oferta.id_ong}, recurso {recurso.id_recurso} "
-                    f"y desastre {datos.tipo_desastre.value}."
-                )
+                # La falta de certificación descarta este recurso, no toda la
+                # solicitud. El resto de los recursos de la oferta se evalúa.
+                continue
 
             def puede_ser_principal(certificado: Certificacion) -> bool:
                 return (
@@ -109,6 +103,10 @@ def evaluar_ofertas(
                 observacion=observacion,
             ))
             seleccionadas.append(certificado)
+
+        # Sin recursos certificados no hay perfil ni nivel de riesgo que informar.
+        if not seleccionadas:
+            continue
 
         ofertas.append(OfertaValidada(
             id_oferta=oferta.id_oferta,

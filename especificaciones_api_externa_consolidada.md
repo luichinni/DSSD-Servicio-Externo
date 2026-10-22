@@ -104,9 +104,10 @@ La API está construida con **FastAPI** y **SQLAlchemy 2.0** sobre **PostgreSQL 
 *   **Reglas de Evaluación:**
     1. Si la ONG cuenta con habilitación de `lote_principal` y su nivel de riesgo máximo cubre la gravedad del evento, el recurso se clasifica como `lote_principal`.
     2. Si la certificación es de rol secundario o el riesgo máximo no cubre la gravedad, se clasifica como `apoyo_secundario` con observaciones específicas.
-    3. Si alguna ONG no existe, no está habilitada o carece de certificación vigente para el recurso y tipo de desastre, la API rechaza la solicitud completa con HTTP 404 (`ReferenciaNoDisponible` o `CertificacionNoEncontrada`).
-    4. Perfil de competencia global resultante: `"Avanzado"`, `"Intermedio"` o `"Basico"`.
-    5. Nivel de riesgo permitido devuelto: `"Bajo"`, `"Medio"` o `"Alto"`.
+    3. Si un recurso carece de certificación vigente para el tipo de desastre, se omite ese recurso y continúa la evaluación de los demás. Si una oferta queda sin recursos certificados, no se incluye en `ofertas_validadas`.
+    4. Si alguna ONG no existe, no está habilitada o un recurso no existe en el catálogo, la API rechaza la solicitud completa con HTTP 404 (`ReferenciaNoDisponible`).
+    5. Perfil de competencia global resultante: `"Avanzado"`, `"Intermedio"` o `"Basico"`, calculado sobre los recursos certificados que se devuelven.
+    6. Nivel de riesgo permitido devuelto: `"Bajo"`, `"Medio"` o `"Alto"`, calculado sobre los recursos certificados que se devuelven.
 
 ---
 
@@ -201,12 +202,15 @@ Bonita puede enviar los payloads como objetos JSON nativos o como strings JSON s
 }
 ```
 
-**Respuesta ante certificación faltante o no vigente (HTTP 404 Not Found):**
+**Respuesta cuando el recurso no tiene certificación vigente:**
 ```json
 {
-  "detail": "No se encontró certificación vigente aplicable para la ONG 4, recurso 10 y desastre hidrologico."
+  "id_emergencia": 101,
+  "estado_general": "validado",
+  "ofertas_validadas": []
 }
 ```
+El recurso se omite. Si la misma oferta contiene otros recursos certificados, se devuelven solamente esos recursos.
 
 ---
 
@@ -346,7 +350,7 @@ Bonita puede enviar los payloads como objetos JSON nativos o como strings JSON s
 | **200 OK** | Operación exitosa (`login`, `validar`, consultas GET, `liberar-recursos`, o `adjudicar` total/parcial). |
 | **201 Created** | Creación exitosa de recurso (`POST /api/v1/ongs`). |
 | **401 Unauthorized** | Token ausente, inválido o expirado en endpoints protegidos; o credenciales incorrectas en login. |
-| **404 Not Found** | ONG, recurso o certificación vigente no encontrada en validación; o sin compromisos activos al liberar. |
+| **404 Not Found** | ONG o recurso inexistente en validación; o sin compromisos activos al liberar. Los recursos sin certificación vigente se omiten de la respuesta. |
 | **409 Conflict** | Conflicto por falta total de stock en adjudicación (`bloqueo_fallido`) o ID de ONG duplicado en registro. |
 | **422 Unprocessable** | Error de formato/validación en payload JSON (ej. `gravedad: "alta"` en lugar de `"alto"`, tipos de dato erróneos). |
 | **503 Unavailable** | Base de datos PostgreSQL no disponible o error de configuración JWT. |
