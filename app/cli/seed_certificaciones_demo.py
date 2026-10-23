@@ -5,10 +5,19 @@ from datetime import date, datetime, timedelta, timezone
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.security import hash_password
 from app.db.session import get_session_factory
-from app.models import Certificacion, Inventario, ONG, Recurso
+from app.models import Certificacion, Inventario, ONG, Recurso, User
 
 REFERENCIA_PENDIENTE = "Referencia heredada de certificaciones; completar y verificar antes de habilitar."
+
+
+def cargar_usuario_demo(db: Session) -> None:
+    """Crea el usuario operador por defecto para pruebas si no existe."""
+    email_demo = "operador@emergencias.gob.ar"
+    if db.scalar(select(User.id).where(User.email == email_demo)) is None:
+        db.add(User(email=email_demo, hashed_password=hash_password("PasswordSegura123!")))
+        db.flush()
 
 
 def cargar_catalogo_demo(db: Session) -> None:
@@ -24,9 +33,19 @@ def cargar_catalogo_demo(db: Session) -> None:
             ong.nombre = f"ONG Demo {id_ong}"
             ong.descripcion = "Datos ficticios para desarrollo."
             ong.habilitada = True
+
+    # ONG 5: Inhabilitada para probar filtros de catálogo y rechazo en validación
+    ong_5 = db.get(ONG, 5)
+    if ong_5 is None:
+        db.add(ONG(
+            id=5, nombre="ONG Demo Inhabilitada 5",
+            descripcion="ONG suspendida para pruebas de filtro y validación.", habilitada=False,
+        ))
+
     for id_recurso, nombre, unidad in (
         (10, "Bote de rescate demo", "unidad"),
         (12, "Personal de apoyo demo", "persona"),
+        (20, "Generador eléctrico demo", "unidad"),
     ):
         recurso = db.get(Recurso, id_recurso)
         if recurso is None:
@@ -50,6 +69,7 @@ def cargar_catalogo_demo(db: Session) -> None:
 
 
 def cargar_demo(db: Session, hoy: date) -> int:
+    cargar_usuario_demo(db)
     cargar_catalogo_demo(db)
     ejemplos = [
         (3, 10, "lote_principal", "alto", "Avanzado", hoy + timedelta(days=365)),
