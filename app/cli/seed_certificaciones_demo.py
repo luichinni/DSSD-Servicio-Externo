@@ -102,10 +102,89 @@ def cargar_demo(db: Session, hoy: date) -> int:
     return creadas
 
 
+def cargar_catalogo_integracion(db: Session, hoy: date) -> int:
+    """Alinea ONGs, recursos, inventarios y certificaciones con los IDs base de DSSD-FlaskApp."""
+    ongs_flask = [
+        (1, "Red de Apoyo Comunitario", "ONG base de DSSD-FlaskApp."),
+        (2, "Brigada Humanitaria Federal", "ONG colaboradora base de DSSD-FlaskApp."),
+        (3, "Cruz Verde Solidaria", "ONG de respuesta rápida y logística."),
+    ]
+    for id_ong, nombre, desc in ongs_flask:
+        ong = db.get(ONG, id_ong)
+        if ong is None:
+            db.add(ONG(id=id_ong, nombre=nombre, descripcion=desc, habilitada=True))
+        else:
+            ong.habilitada = True
+
+    recursos_flask = [
+        (1, "Paramédicos de Emergencia", "persona"),
+        (2, "Raciones de Alimento Seco", "racion"),
+        (3, "Ambulancia de Traslado 4x4", "unidad"),
+        (4, "Carpas Sanitarias de Campaña", "unidad"),
+        (5, "Kits de Higiene Comunitarios", "kit"),
+    ]
+    for id_recurso, nombre, unidad in recursos_flask:
+        recurso = db.get(Recurso, id_recurso)
+        if recurso is None:
+            db.add(Recurso(id=id_recurso, nombre=nombre, unidad_medida=unidad))
+    db.flush()
+
+    for id_ong, _, _ in ongs_flask:
+        for id_recurso, _, _ in recursos_flask:
+            inv = db.scalar(select(Inventario).where(
+                Inventario.ong_id == id_ong,
+                Inventario.recurso_id == id_recurso,
+            ))
+            if inv is None:
+                db.add(Inventario(
+                    ong_id=id_ong,
+                    recurso_id=id_recurso,
+                    cantidad_total=10000,
+                    cantidad_disponible=10000,
+                ))
+            elif inv.cantidad_disponible < 5000:
+                delta = 10000 - inv.cantidad_disponible
+                inv.cantidad_total = max(inv.cantidad_total + delta, 10000)
+                inv.cantidad_disponible = 10000
+    db.flush()
+
+    tipos_desastre = ("geologico", "meteorologico", "hidrologico", "biologico", "incendio_forestal")
+    creadas = 0
+    for id_ong, _, _ in ongs_flask:
+        for id_recurso, _, _ in recursos_flask:
+            for tipo in tipos_desastre:
+                cert = db.scalar(select(Certificacion).where(
+                    Certificacion.id_ong == id_ong,
+                    Certificacion.id_recurso == id_recurso,
+                    Certificacion.tipo_desastre == tipo,
+                    Certificacion.rol_permitido == "lote_principal",
+                ))
+                if cert is None:
+                    db.add(Certificacion(
+                        id_ong=id_ong,
+                        id_recurso=id_recurso,
+                        tipo_desastre=tipo,
+                        rol_permitido="lote_principal",
+                        riesgo_maximo="critico",
+                        perfil_competencia="Avanzado",
+                        fecha_vencimiento=hoy + timedelta(days=365),
+                        activa=True,
+                    ))
+                    creadas += 1
+                else:
+                    cert.activa = True
+                    cert.riesgo_maximo = "critico"
+                    if cert.fecha_vencimiento < hoy + timedelta(days=30):
+                        cert.fecha_vencimiento = hoy + timedelta(days=365)
+    return creadas
+
+
 def main() -> None:
+    hoy = ahora_ar().date()
     with get_session_factory()() as db, db.begin():
-        creadas = cargar_demo(db, ahora_ar().date())
-    print(f"Certificaciones ficticias creadas: {creadas}. Usar solo en desarrollo.")
+        creadas = cargar_demo(db, hoy)
+        integracion = cargar_catalogo_integracion(db, hoy)
+    print(f"Certificaciones ficticias creadas: {creadas}. Integración Flask: {integracion}. Usar solo en desarrollo.")
 
 
 if __name__ == "__main__":
