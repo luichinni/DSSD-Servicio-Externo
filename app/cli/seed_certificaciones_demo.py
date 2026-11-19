@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from app.core.security import hash_password
 from app.db.session import get_session_factory
 from app.models import Certificacion, Inventario, ONG, Recurso, User
+from app.core.timezone import ahora_ar
 
 REFERENCIA_PENDIENTE = "Referencia heredada de certificaciones; completar y verificar antes de habilitar."
 
@@ -103,7 +104,7 @@ def cargar_demo(db: Session, hoy: date) -> int:
 
 def main() -> None:
     with get_session_factory()() as db, db.begin():
-        creadas = cargar_demo(db, datetime.now(timezone.utc).date())
+        creadas = cargar_demo(db, ahora_ar().date())
     print(f"Certificaciones ficticias creadas: {creadas}. Usar solo en desarrollo.")
 
 

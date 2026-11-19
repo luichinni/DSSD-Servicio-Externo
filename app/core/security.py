@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from app.core.config import get_jwt_settings
 from app.db.session import get_db
 from app.models.user import User
+from app.core.timezone import ahora_ar
 
 password_hash = PasswordHash.recommended()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
@@ -30,7 +31,7 @@ def create_access_token(
     expires_delta: timedelta | None = None,
 ) -> str:
     settings = get_jwt_settings()
-    expires_at = datetime.now(timezone.utc) + (
+    expires_at = ahora_ar() + (
         expires_delta
         if expires_delta is not None
         else timedelta(minutes=settings.access_token_expire_minutes)

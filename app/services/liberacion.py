@@ -7,13 +7,14 @@ from sqlalchemy.orm import Session
 from app.models.compromiso_recurso import CompromisoRecurso, EstadoCompromiso
 from app.models.inventario import Inventario
 from app.schemas.liberacion import LiberarRecursosRequest, LiberarRecursosResponse
+from app.core.timezone import ahora_ar
 
 
 def procesar_liberacion(
     db: Session,
     request: LiberarRecursosRequest,
 ) -> LiberarRecursosResponse:
-    ahora = datetime.now(timezone.utc)
+    ahora = ahora_ar()
 
     # 1. Buscar todos los compromisos activos para la ONG y emergencia dada
     compromisos_activos = list(

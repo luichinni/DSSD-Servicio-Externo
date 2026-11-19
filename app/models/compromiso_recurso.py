@@ -5,6 +5,7 @@ from sqlalchemy import CheckConstraint, DateTime, Enum, Index, Integer, UniqueCo
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import Base
+from app.core.timezone import ahora_ar
 
 
 class EstadoCompromiso(str, enum.Enum):
@@ -32,7 +33,7 @@ class CompromisoRecurso(Base):
     )
     fecha_bloqueo: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
+        default=lambda: ahora_ar(),
         nullable=False,
     )
     fecha_liberacion: Mapped[datetime | None] = mapped_column(

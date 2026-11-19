@@ -11,6 +11,7 @@ from app.core.security import get_current_user
 from app.db.session import get_db
 from app.schemas import DisponibilidadResponse, OngsHabilitadasResponse, errores
 from app.services.catalogo import consultar_disponibilidad, consultar_ongs_habilitadas
+from app.core.timezone import ahora_ar
 
 router = APIRouter(tags=[TAG_CATALOGO], dependencies=[Depends(get_current_user)])
 DatabaseSession = Annotated[Session, Depends(get_db)]
@@ -23,7 +24,7 @@ respuestas = {**errores(401), 503: {"description": "Catálogo nacional no dispon
 )
 def obtener_ongs_habilitadas(db: DatabaseSession):
     try:
-        ongs = consultar_ongs_habilitadas(db, datetime.now(timezone.utc).date())
+        ongs = consultar_ongs_habilitadas(db, ahora_ar().date())
     except SQLAlchemyError as exc:
         raise DatabaseConfigurationError("No se pudo consultar el catálogo de ONGs.") from exc
     return OngsHabilitadasResponse(total=len(ongs), ongs=ongs)

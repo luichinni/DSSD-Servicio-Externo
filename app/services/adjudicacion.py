@@ -1,3 +1,4 @@
+from app.core.timezone import ahora_ar
 from datetime import datetime, timezone
 
 from fastapi import HTTPException, status
@@ -19,7 +20,7 @@ def procesar_adjudicacion(
     db: Session,
     request: AdjudicarOfertasRequest,
 ) -> tuple[AdjudicarOfertasResponse, int]:
-    ahora = datetime.now(timezone.utc)
+    ahora = ahora_ar()
 
     # Recolectar todas las parejas (id_ong, id_recurso) para pre-bloquear con with_for_update() en orden determinista
     pares_a_bloquear = sorted(

@@ -1,3 +1,4 @@
+from app.core.timezone import ahora_ar
 from datetime import datetime, timezone
 from typing import Annotated
 
@@ -49,7 +50,7 @@ def validar_ofertas(
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except SQLAlchemyError as exc:
         raise DatabaseConfigurationError("No se pudo consultar el registro de certificaciones.") from exc
-    return evaluar_ofertas(payload, certificaciones, datetime.now(timezone.utc).date())
+    return evaluar_ofertas(payload, certificaciones, ahora_ar().date())
 
 
 @router.post(

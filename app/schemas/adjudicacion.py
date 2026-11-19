@@ -1,3 +1,4 @@
+from app.core.timezone import ahora_ar
 from typing import Any, Literal
 
 from pydantic import AwareDatetime, ConfigDict, Field, field_validator, model_validator
@@ -95,7 +96,7 @@ class AdjudicarOfertasResponse(ApiModel):
     estado: Literal["bloqueo_exitoso", "bloqueo_parcial"]
     mensaje: str
     timestamp_bloqueo: AwareDatetime = Field(
-        description="Momento del commit, en UTC (datetime.now(timezone.utc))."
+        description="Momento del commit, en UTC (ahora_ar())."
     )
     ofertas_adjudicadas: list[OfertaAdjudicadaResultado] = Field(
         default_factory=list,
