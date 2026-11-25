@@ -61,7 +61,7 @@ class ValidarOfertasRequest(ApiModel):
     id_emergencia: IdEmergencia
     tipo_desastre: TipoDesastreCampo
     gravedad: GravedadCampo
-    ofertas: list[OfertaEntrada] = Field(min_length=1, description="Al menos una oferta.")
+    ofertas: list[OfertaEntrada] = Field(description="Ofertas recibidas. Puede estar vacía si venció la convocatoria sin ofertas.")
 
     @model_validator(mode="before")
     @classmethod

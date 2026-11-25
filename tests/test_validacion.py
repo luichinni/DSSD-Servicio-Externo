@@ -183,14 +183,24 @@ def test_rechaza_cantidades_invalidas_del_contrato(entorno, cantidad):
     assert client.post(URL, json=solicitud, headers=headers).status_code == 422
 
 
-@pytest.mark.parametrize("caso", ["ofertas_vacias", "recursos_vacios", "duplicado", "oferta_duplicada", "gravedad", "id", "desastre"])
+def test_validar_convocatoria_sin_ofertas(entorno):
+    client, _, headers = entorno
+    solicitud = dict(payload(), ofertas=[])
+    respuesta = client.post(URL, json=solicitud, headers=headers)
+    assert respuesta.status_code == 200
+    assert respuesta.json() == {
+        "id_emergencia": solicitud["id_emergencia"],
+        "estado_general": "validado",
+        "ofertas_validadas": [],
+    }
+
+
+@pytest.mark.parametrize("caso", ["recursos_vacios", "duplicado", "oferta_duplicada", "gravedad", "id", "desastre"])
 def test_rechaza_payload_fuera_del_contrato(entorno, caso):
     client, _, headers = entorno
     solicitud = payload()
     oferta = solicitud["ofertas"][0]
-    if caso == "ofertas_vacias":
-        solicitud["ofertas"] = []
-    elif caso == "recursos_vacios":
+    if caso == "recursos_vacios":
         oferta["recursos"] = []
     elif caso == "duplicado":
         oferta["recursos"] *= 2

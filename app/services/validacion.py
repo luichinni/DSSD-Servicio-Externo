@@ -23,6 +23,9 @@ class ReferenciaNoDisponible(ValueError):
 
 
 def consultar_certificaciones(db: Session, datos: ValidarOfertasRequest) -> list[Certificacion]:
+    if not datos.ofertas:
+        return []
+
     ids_ongs = {oferta.id_ong for oferta in datos.ofertas}
     ongs = {ong.id: ong for ong in db.scalars(select(ONG).where(ONG.id.in_(ids_ongs)))}
     for id_ong in sorted(ids_ongs):

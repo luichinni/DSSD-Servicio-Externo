@@ -48,11 +48,10 @@ def test_cantidad_cero_es_rechazada():
         AdjudicarOfertasRequest.model_validate(data)
 
 
-def test_ofertas_vacias_son_rechazadas():
+def test_validacion_admite_convocatoria_sin_ofertas():
     data = _ejemplo(ValidarOfertasRequest)
     data["ofertas"] = []
-    with pytest.raises(ValidationError):
-        ValidarOfertasRequest.model_validate(data)
+    assert ValidarOfertasRequest.model_validate(data).ofertas == []
 
 
 def test_recursos_duplicados_son_rechazados():
