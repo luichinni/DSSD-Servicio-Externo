@@ -108,6 +108,7 @@ La API está construida con **FastAPI** y **SQLAlchemy 2.0** sobre **PostgreSQL 
     4. Si alguna ONG no existe, no está habilitada o un recurso no existe en el catálogo, la API rechaza la solicitud completa con HTTP 404 (`ReferenciaNoDisponible`).
     5. Perfil de competencia global resultante: `"Avanzado"`, `"Intermedio"` o `"Basico"`, calculado sobre los recursos certificados que se devuelven.
     6. Nivel de riesgo permitido devuelto: `"Bajo"`, `"Medio"` o `"Alto"`, calculado sobre los recursos certificados que se devuelven.
+    7. Si vence la convocatoria sin ofertas, enviar `"ofertas": []`. La API devuelve HTTP 200 con `"estado_general": "validado"` y `"ofertas_validadas": []`.
 
 ---
 
